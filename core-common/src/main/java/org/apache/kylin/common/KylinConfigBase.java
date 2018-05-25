@@ -225,9 +225,46 @@ abstract public class KylinConfigBase implements Serializable {
         return getOptional("kylin.env", "DEV");
     }
 
-    private String cachedHdfsWorkingDirectory;
+    static public String cachedHdfsWorkingDirectory;//////
+
+    public void setHdfsWorkingDirectory(String cachedHdfsWorkingDirectory){///////
+        this.cachedHdfsWorkingDirectory = cachedHdfsWorkingDirectory;
+    }
 
     public String getHdfsWorkingDirectory() {
+        if (cachedHdfsWorkingDirectory != null)
+            return cachedHdfsWorkingDirectory;
+
+        String root = getOptional("kylin.env.hdfs-working-dir", "/kylin");
+
+        Path path = new Path(root);
+        if (!path.isAbsolute())
+            throw new IllegalArgumentException("kylin.env.hdfs-working-dir must be absolute, but got " + root);
+
+        // make sure path is qualified
+        try {
+            FileSystem fs = path.getFileSystem(HadoopUtil.getCurrentConfiguration());
+            path = fs.makeQualified(path);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // append metadata-url prefix
+        root = new Path(path, StringUtils.replaceChars(getMetadataUrlPrefix(), ':', '-')).toString();
+
+        if (!root.endsWith("/"))
+            root += "/";
+
+        cachedHdfsWorkingDirectory = root;
+        if (cachedHdfsWorkingDirectory.startsWith("file:")) {
+            cachedHdfsWorkingDirectory = cachedHdfsWorkingDirectory.replace("file:", "file://");
+        } else if (cachedHdfsWorkingDirectory.startsWith("maprfs:")) {
+            cachedHdfsWorkingDirectory = cachedHdfsWorkingDirectory.replace("maprfs:", "maprfs://");
+        }
+        return cachedHdfsWorkingDirectory;
+    }
+
+    public String getHdfsWorkingDirectory(String cachedHdfsWorkingDirectory) {//
         if (cachedHdfsWorkingDirectory != null)
             return cachedHdfsWorkingDirectory;
 

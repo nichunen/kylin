@@ -231,7 +231,8 @@ public class BasicTest {
 
         String[] origin = new String[] {"ab,c", "cd|e"};
 
-        String delimiter = "\u001F"; // "\t";
+        // test with sequence file default delimiter
+        String delimiter = "\01"; //"\u001F"; "\t";
         String concated = StringUtils.join(Arrays.asList(origin), delimiter);
         String[] newValues = concated.split(delimiter);
 

@@ -44,6 +44,8 @@ import org.apache.kylin.metadata.model.TblColRef;
 
 public class JoinedFlatTable {
 
+    public static final String TEXTFILE = "TEXTFILE";
+
     public static String getTableDir(IJoinedFlatTableDesc flatDesc, String storageDfsDir) {
         return storageDfsDir + "/" + flatDesc.getTableName();
     }
@@ -61,13 +63,13 @@ public class JoinedFlatTable {
     }
 
     public static String generateCreateTableStatement(IJoinedFlatTableDesc flatDesc, String storageDfsDir,
-            String storageFormat) {
+                                                      String storageFormat) {
         String fieldDelimiter = flatDesc.getDataModel().getConfig().getFlatTableFieldDelimiter();
         return generateCreateTableStatement(flatDesc, storageDfsDir, storageFormat, fieldDelimiter);
     }
 
     public static String generateCreateTableStatement(IJoinedFlatTableDesc flatDesc, String storageDfsDir,
-            String storageFormat, String fieldDelimiter) {
+                                                      String storageFormat, String fieldDelimiter) {
         StringBuilder ddl = new StringBuilder();
 
         ddl.append("CREATE EXTERNAL TABLE IF NOT EXISTS " + flatDesc.getTableName() + "\n");
@@ -78,10 +80,10 @@ public class JoinedFlatTable {
             if (i > 0) {
                 ddl.append(",");
             }
-            ddl.append(colName(col) + " " + getHiveDataType(col.getDatatype()) + "\n");
+            ddl.append(colName(col, flatDesc.useAlias()) + " " + getHiveDataType(col.getDatatype()) + "\n");
         }
         ddl.append(")" + "\n");
-        if ("TEXTFILE".equals(storageFormat)) {
+        if (TEXTFILE.equals(storageFormat)) {
             ddl.append("ROW FORMAT DELIMITED FIELDS TERMINATED BY '\\" + fieldDelimiter + "'\n");
         }
         ddl.append("STORED AS " + storageFormat + "\n");
@@ -95,6 +97,12 @@ public class JoinedFlatTable {
         ddl.append("DROP TABLE IF EXISTS " + flatDesc.getTableName() + ";").append("\n");
         return ddl.toString();
     }
+
+    public static String generateDropTableStatement1(IJoinedFlatTableDesc flatDesc) {
+        StringBuilder ddl = new StringBuilder();
+        ddl.append("DROP TABLE IF EXISTS " + flatDesc.getDataModel().getRootFactTableName() + ";").append("\n");
+        return ddl.toString();
+    }///
 
     public static String generateInsertDataStatement(IJoinedFlatTableDesc flatDesc) {
         CubeSegment segment = ((CubeSegment) flatDesc.getSegment());
@@ -120,11 +128,6 @@ public class JoinedFlatTable {
                 + ";\n";
     }
 
-    public static String generateInsertPartialDataStatement(IJoinedFlatTableDesc flatDesc) {
-        return "INSERT OVERWRITE TABLE " + flatDesc.getTableName() + " " + generateSelectDataStatement(flatDesc)
-                + ";\n";
-    }
-
     public static String generateSelectDataStatement(IJoinedFlatTableDesc flatDesc) {
         return generateSelectDataStatement(flatDesc, false, null);
     }
@@ -146,7 +149,7 @@ public class JoinedFlatTable {
             if (skipAsList.contains(colTotalName)) {
                 sql.append(col.getExpressionInSourceDB() + sep);
             } else {
-                sql.append(col.getExpressionInSourceDB() + " as " + colName(col) + sep);
+                sql.append(col.getExpressionInSourceDB() + " as " + colName(col, true) + sep);
             }
         }
         appendJoinStatement(flatDesc, sql, singleLine);
@@ -154,15 +157,6 @@ public class JoinedFlatTable {
         return sql.toString();
     }
 
-    public static String generateCountDataStatement(IJoinedFlatTableDesc flatDesc, final String outputDir) {
-        final StringBuilder sql = new StringBuilder();
-        final TableRef rootTbl = flatDesc.getDataModel().getRootFactTable();
-        sql.append("dfs -mkdir -p " + outputDir + ";\n");
-        sql.append("INSERT OVERWRITE DIRECTORY '" + outputDir + "' SELECT count(*) FROM " + rootTbl.getTableIdentity()
-                + " " + rootTbl.getAlias() + "\n");
-        appendWhereStatement(flatDesc, sql);
-        return sql.toString();
-    }
 
     public static void appendJoinStatement(IJoinedFlatTableDesc flatDesc, StringBuilder sql, boolean singleLine) {
         final String sep = singleLine ? " " : "\n";
@@ -175,7 +169,6 @@ public class JoinedFlatTable {
         for (JoinTableDesc lookupDesc : model.getJoinTables()) {
             JoinDesc join = lookupDesc.getJoin();
             if (join != null && join.getType().equals("") == false) {
-                String joinType = join.getType().toUpperCase();
                 TableRef dimTable = lookupDesc.getTableRef();
                 if (!dimTableCache.contains(dimTable)) {
                     TblColRef[] pk = join.getPrimaryKeyColumns();
@@ -183,6 +176,8 @@ public class JoinedFlatTable {
                     if (pk.length != fk.length) {
                         throw new RuntimeException("Invalid join condition of lookup table:" + lookupDesc);
                     }
+                    String joinType = join.getType().toUpperCase();
+
                     sql.append(joinType + " JOIN " + dimTable.getTableIdentity() + " as " + dimTable.getAlias() + sep);
                     sql.append("ON ");
                     for (int i = 0; i < pk.length; i++) {
@@ -201,7 +196,7 @@ public class JoinedFlatTable {
 
     private static void appendDistributeStatement(StringBuilder sql, TblColRef redistCol) {
         if (redistCol != null) {
-            sql.append(" DISTRIBUTE BY ").append(colName(redistCol)).append(";\n");
+            sql.append(" DISTRIBUTE BY ").append(colName(redistCol, true)).append(";\n");
         } else {
             sql.append(" DISTRIBUTE BY RAND()").append(";\n");
         }
@@ -243,8 +238,13 @@ public class JoinedFlatTable {
         sql.append(whereBuilder.toString());
     }
 
+
     private static String colName(TblColRef col) {
-        return col.getTableAlias() + "_" + col.getName();
+        return colName(col, true);
+    }
+
+    private static String colName(TblColRef col, boolean useAlias) {
+        return useAlias ? col.getTableAlias() + "_" + col.getName() : col.getName();
     }
 
     private static String getHiveDataType(String javaDataType) {
