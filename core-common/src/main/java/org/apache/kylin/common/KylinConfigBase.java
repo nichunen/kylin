@@ -484,6 +484,10 @@ abstract public class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.cube.rowkey.max-size", "63"));
     }
 
+    public int getCubeRowkeySplitterMaxLength() {
+        return Integer.parseInt(getOptional("kylin.cube.rowkey.splitter-max-length", "256"));
+    }
+
     public int getMaxBuildingSegments() {
         return Integer.parseInt(getOptional("kylin.cube.max-building-segments", "10"));
     }
