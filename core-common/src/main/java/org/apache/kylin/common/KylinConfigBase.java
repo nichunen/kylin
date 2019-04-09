@@ -763,7 +763,7 @@ public abstract class KylinConfigBase implements Serializable {
     }
 
     // retry interval in milliseconds
-    public int getJobRetryInterval(){
+    public int getJobRetryInterval() {
         return Integer.parseInt(getOptional("kylin.job.retry-interval", "30000"));
     }
 
@@ -1342,7 +1342,6 @@ public abstract class KylinConfigBase implements Serializable {
         return Integer.parseInt(getOptional("kylin.engine.mr.yarn-check-interval-seconds", "10"));
     }
 
-
     public boolean isUseLocalClasspathEnabled() {
         return Boolean.parseBoolean(getOptional("kylin.engine.mr.use-local-classpath", TRUE));
     }
@@ -1382,7 +1381,7 @@ public abstract class KylinConfigBase implements Serializable {
     public boolean isSparkFactDistinctEnable() {
         return Boolean.parseBoolean(getOptional("kylin.engine.spark-fact-distinct", "false"));
     }
-    
+
     // ============================================================================
     // ENGINE.LIVY
     // ============================================================================
@@ -1838,7 +1837,8 @@ public abstract class KylinConfigBase implements Serializable {
                 + "kylin.web.help,kylin.web.hide-measures,kylin.web.link-streaming-guide,kylin.server.external-acl-provider,"
                 + "kylin.security.profile,"
                 + "kylin.htrace.show-gui-trace-toggle,kylin.web.export-allow-admin,kylin.web.export-allow-other,"
-                + "kylin.cube.cubeplanner.enabled,kylin.web.dashboard-enabled,kylin.tool.auto-migrate-cube.enabled");
+                + "kylin.cube.cubeplanner.enabled,kylin.web.dashboard-enabled,kylin.tool.auto-migrate-cube.enabled,"
+                + "kylin.job.scheduler.default");
     }
 
     // ============================================================================
@@ -2000,7 +2000,8 @@ public abstract class KylinConfigBase implements Serializable {
     // streaming
     // ============================================================================
     public String getStreamingStoreClass() {
-        return getOptional("kylin.stream.store.class", "org.apache.kylin.stream.core.storage.columnar.ColumnarSegmentStore");
+        return getOptional("kylin.stream.store.class",
+                "org.apache.kylin.stream.core.storage.columnar.ColumnarSegmentStore");
     }
 
     public String getStreamingBasicCuboidJobDFSBlockSize() {
